@@ -9,9 +9,15 @@ struct Cli {
     input: std::path::PathBuf,
     // The path to the output file
     output: std::path::PathBuf,
-    // // Include header or not
-    #[clap(long, short, action=clap::ArgAction::SetTrue)]
+    // Include header or not
+    #[clap(long, short, action = clap::ArgAction::SetTrue)]
     add_header: bool,
+    // Delimiter of input file, default "\t"
+    #[clap(long, short, default_value = "\t")]
+    input_delimiter: String,
+    // Delimiter of output file, default ","
+    #[clap(long, short, default_value = ",")]
+    output_delimiter: String,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -35,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Process the line if it is in a COPY block
         if in_copy {
-            let line = line.replace("\t", ",");
+            let line = line.replace(&args.input_delimiter, &args.output_delimiter);
             let line = line.replace("\\N", "");
             writeln!(output_file, "{}", line)?;
         }
@@ -44,6 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if line.starts_with("COPY") {
             in_copy = true;
             if args.add_header {
+                // Variable names are enclosed by "()"
                 let start = match line.find('(') {
                     Some(index) => index,
                     None => continue,
@@ -52,6 +59,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Some(index) => index,
                     None => continue,
                 };
+                
+                // Process the line if "()" is found
                 if start < end {
                     let line = &line[start + 1 .. end];
                     let line = line.replace(" ", "");
